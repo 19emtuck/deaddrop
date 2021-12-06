@@ -63,6 +63,9 @@ def create_token():
     return {"token": token}
 
 
+@app.delete("/{token:str}")
+@app.patch("/{token:str}")
+@app.put("/{token:str}")
 @app.get("/{token:str}")
 @app.post("/{token:str}")
 async def read_item(
