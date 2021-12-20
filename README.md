@@ -11,5 +11,9 @@ the terms of the M.I.T License.
 
 # docker exec
 
-sudo docker build -t deaddrop:last .
-sudo docker run -d -p 4014:80 --name deaddrop deaddrop:last
+
+
+``sudo docker build -t deaddrop:last .``
+
+
+``sudo docker run -d -p 4014:80 --name deaddrop deaddrop:last``
