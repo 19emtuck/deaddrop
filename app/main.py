@@ -1,3 +1,13 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2021  Stéphane Bard <stephane.bard@gmail.com>
+#
+# This file is part of deaddrop
+#
+# deaddrop is free software; you can redistribute it and/or modify it under
+# the terms of the M.I.T License.
+#
 from typing import Optional, Any, List
 from datetime import date, datetime, timedelta
 from fastapi import FastAPI, Request, Response, Header, HTTPException
