@@ -12,14 +12,17 @@ from typing import Optional, List
 from datetime import datetime
 from fastapi import FastAPI, Request, Response, Header, HTTPException
 import uuid
+import os
 import pickle
 from aredis import StrictRedis
 
-from cachetools import TTLCache
+# set redis for scalability
+redis_host   = os.getenv("REDIS_HOST_NAME", "127.0.0.1")
+redis_port   = int(os.getenv("REDIS_TCP_PORT", 6379))
+redis_db     = int(os.getenv("REDIS_DEFAULT_DEB", 0))
 
 app = FastAPI(redoc_url=None, docs_url=None)
-store = TTLCache(maxsize=10000, ttl=3600)
-client: StrictRedis = StrictRedis(host="127.0.0.1", port=6379, db=0)
+client: StrictRedis = StrictRedis(host=redis_host, port=redis_port, db=redis_db)
 
 
 class UnknownToken(HTTPException):
