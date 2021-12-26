@@ -8,14 +8,18 @@
 # deaddrop is free software; you can redistribute it and/or modify it under
 # the terms of the M.I.T License.
 #
-from typing import Optional, Any, List
-from datetime import date, datetime, timedelta
+from typing import Optional, List
+from datetime import datetime
 from fastapi import FastAPI, Request, Response, Header, HTTPException
 import uuid
+import pickle
+from aredis import StrictRedis
+
 from cachetools import TTLCache
 
 app = FastAPI(redoc_url=None, docs_url=None)
 store = TTLCache(maxsize=10000, ttl=3600)
+client = StrictRedis(host="127.0.0.1", port=6379, db=0)
 
 
 class UnknownToken(HTTPException):
@@ -31,45 +35,51 @@ async def default_route(scope, receive, send):
 app.router.default = default_route
 
 
-def add_token(token: str) -> None:
+async def add_token(token: str) -> None:
     """ """
-    store[token] = []
+    await client.set(token, pickle.dumps([]))
 
 
-def save_data(token: str, method: str, data: str, headers: List):
+async def save_data(token: str, method: str, data: str, headers: List):
     """ """
     now = datetime.now()
     payload = {
         "created_at": now.strftime("%Y-%m-%d %H:%M:%S"),
         "method": method,
-        "content": data,
+        "content": data.decode("utf-8"),
         "headers": headers,
     }
-    if token in store:
-        store[token].append(payload)
+
+    data = await client.get(token)
+    if data:
+        data = pickle.loads(data)
+        data.append(payload)
+        await client.set(token, pickle.dumps(data))
     else:
         raise UnknownToken(status_code=404, detail="unknown")
 
 
 @app.get("/token/{token:str}/requests")
-def get_content(token):
+async def get_content(token):
     """
     create a valid UUID
     """
-    if token in store:
-        result = {"data": store[token]}
+    data = await client.get(token)
+    if data:
+        data = pickle.loads(data)
+        result = {"data": data}
     else:
         raise UnknownToken(status_code=404, detail="unknown")
     return result
 
 
 @app.post("/token")
-def create_token():
+async def create_token():
     """
     create a valid UUID
     """
     token = str(uuid.uuid4())
-    add_token(token)
+    await add_token(token)
     return {"token": token}
 
 
@@ -86,5 +96,5 @@ async def read_item(
     method = request.method
     method = method.upper()
 
-    save_data(token, method, content, headers)
+    await save_data(token, method, content, headers)
     return "Ok"
