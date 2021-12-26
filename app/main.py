@@ -19,7 +19,7 @@ from cachetools import TTLCache
 
 app = FastAPI(redoc_url=None, docs_url=None)
 store = TTLCache(maxsize=10000, ttl=3600)
-client = StrictRedis(host="127.0.0.1", port=6379, db=0)
+client: StrictRedis = StrictRedis(host="127.0.0.1", port=6379, db=0)
 
 
 class UnknownToken(HTTPException):
@@ -27,7 +27,6 @@ class UnknownToken(HTTPException):
 
 
 async def default_route(scope, receive, send):
-    request = Request(scope, receive=receive, send=send)
     response = Response("Ok")
     await response(scope, receive, send)
 
@@ -37,7 +36,7 @@ app.router.default = default_route
 
 async def add_token(token: str) -> None:
     """ """
-    await client.set(token, pickle.dumps([]))
+    await client.set(token, pickle.dumps([]), 3600)
 
 
 async def save_data(token: str, method: str, data: str, headers: List):
@@ -54,7 +53,7 @@ async def save_data(token: str, method: str, data: str, headers: List):
     if data:
         data = pickle.loads(data)
         data.append(payload)
-        await client.set(token, pickle.dumps(data))
+        await client.set(token, pickle.dumps(data), 3600)
     else:
         raise UnknownToken(status_code=404, detail="unknown")
 
