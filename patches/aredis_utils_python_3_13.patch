@@ -1,0 +1,6 @@
+3d2
+< from distutils.version import StrictVersion
+17c16
+< LOOP_DEPRECATED = StrictVersion(python_version) >= StrictVersion("3.8.0")
+---
+> LOOP_DEPRECATED = True
