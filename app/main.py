@@ -12,6 +12,7 @@
 from typing import List, Annotated
 import asyncio
 import uuid
+import logging
 import os
 import json
 from datetime import datetime
@@ -26,16 +27,23 @@ from fastapi import (
     WebSocketException,
     status,
 )
+from fastapi.responses import ORJSONResponse
+from fastapi.logger import logger
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.params import Header as HeaderType
 from aredis import StrictRedis
+
+# override global logger if uvicorn is setup
+if "uvicorn.access" in logging.Logger.manager.loggerDict:
+    logger = logging.getLogger("uvicorn.access")
+    
 
 # set redis for scalability
 redis_host = os.getenv("REDIS_HOST_NAME", "127.0.0.1")
 redis_port = int(os.getenv("REDIS_TCP_PORT", "6379"))
 redis_db = int(os.getenv("REDIS_DEFAULT_DEB", "0"))
 
-app = FastAPI(redoc_url=None, docs_url=None)
+app = FastAPI(redoc_url=None, docs_url=None, debug=False)
 client: StrictRedis = StrictRedis(host=redis_host, port=redis_port, db=redis_db)
 
 
@@ -46,6 +54,15 @@ app.add_middleware(
     allow_methods=['*'],
     allow_headers=['*'],
 )
+
+
+@app.on_event("startup")
+async def startup_event():
+    """
+    """
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+    logger.addHandler(handler)
 
 
 class UnknownToken(HTTPException):
@@ -61,6 +78,7 @@ async def websocket_endpoint(websocket: WebSocket, token_id: str):
     """
     data = await client.get(token_id)
     if data is None:
+        logger.info(f'websocket unknown {token_id}')
         raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
 
     await websocket.accept()
@@ -69,11 +87,14 @@ async def websocket_endpoint(websocket: WebSocket, token_id: str):
         serialized_data = await client.get(token_id)
         data = json.loads(serialized_data)
         if data:
+            logger.info(f'websocket end of wait {token_id}')
             await websocket.send_text(f"{data}")
             break
         await asyncio.sleep(0.01)
     else:
+        logger.info(f'websocket en of wait on token {token} (data already published)')
         await websocket.send_text(f"{data}")
+    logger.info(f'closing websocket')
     await websocket.close()
 
 
@@ -120,7 +141,7 @@ async def save_data(
         raise UnknownToken(status_code=404, detail="unknown")
 
 
-@app.get("/token/{token:str}/requests")
+@app.get("/token/{token:str}/requests", response_class=ORJSONResponse)
 async def get_content(token):
     """
     create a valid UUID
@@ -149,6 +170,7 @@ async def create_token():
     """
     token = str(uuid.uuid4())
     await add_token(token)
+    logger.info(f'token created {token}')
     return {"token": token}
 
 
@@ -175,4 +197,5 @@ async def dead_drop_on_token(
         user_agent = repr(user_agent)
 
     await save_data(token, method, content, headers, user_agent=user_agent)
+    logger.info(f'method {method} called on token {token}')
     return "Ok"

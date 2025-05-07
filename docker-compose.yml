@@ -10,3 +10,6 @@ services:
   redis:
     image: "redis:alpine"
     container_name: deaddropcache
+    environment:
+      - TZ=Europe/Paris
+      - DEBIAN_FRONTEND=noninteractive
