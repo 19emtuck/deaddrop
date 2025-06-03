@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
- Copyright (C) 2024  Stéphane Bard <stephane.bard@gmail.com>
+Copyright (C) 2024  Stéphane Bard <stephane.bard@gmail.com>
 
- This file is part of deaddrop
+This file is part of deaddrop
 
- deaddrop is free software; you can redistribute it and/or modify it under
- the terms of the M.I.T License.
+deaddrop is free software; you can redistribute it and/or modify it under
+the terms of the M.I.T License.
 """
 
 from typing import List, Annotated
@@ -36,7 +36,7 @@ from aredis import StrictRedis
 # override global logger if uvicorn is setup
 if "uvicorn.access" in logging.Logger.manager.loggerDict:
     logger = logging.getLogger("uvicorn.access")
-    
+
 
 # set redis for scalability
 redis_host = os.getenv("REDIS_HOST_NAME", "127.0.0.1")
@@ -49,17 +49,16 @@ client: StrictRedis = StrictRedis(host=redis_host, port=redis_port, db=redis_db)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=['*'],
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=['*'],
-    allow_headers=['*'],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
 @app.on_event("startup")
 async def startup_event():
-    """
-    """
+    """ """
     handler = logging.StreamHandler()
     handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
     logger.addHandler(handler)
@@ -74,11 +73,11 @@ class UnknownToken(HTTPException):
 @app.websocket("/tokens/{token_id}/ws")
 async def websocket_endpoint(websocket: WebSocket, token_id: str):
     """
-        websocket endpoint if token is known
+    websocket endpoint if token is known
     """
     data = await client.get(token_id)
     if data is None:
-        logger.info(f'websocket unknown {token_id}')
+        logger.info(f"websocket unknown {token_id}")
         raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
 
     await websocket.accept()
@@ -87,14 +86,16 @@ async def websocket_endpoint(websocket: WebSocket, token_id: str):
         serialized_data = await client.get(token_id)
         data = json.loads(serialized_data)
         if data:
-            logger.info(f'websocket end of wait {token_id}')
+            logger.info(f"websocket end of wait {token_id}")
             await websocket.send_text(f"{data}")
             break
         await asyncio.sleep(0.01)
     else:
-        logger.info(f'websocket en of wait on token {token} (data already published)')
+        logger.info(
+            f"websocket en of wait on token {token_id} (data already published)"
+        )
         await websocket.send_text(f"{data}")
-    logger.info(f'closing websocket')
+    logger.info("closing websocket")
     await websocket.close()
 
 
@@ -170,7 +171,7 @@ async def create_token():
     """
     token = str(uuid.uuid4())
     await add_token(token)
-    logger.info(f'token created {token}')
+    logger.info(f"token created {token}")
     return {"token": token}
 
 
@@ -200,5 +201,5 @@ async def dead_drop_on_token(
         user_agent = repr(user_agent)
 
     await save_data(token, method, content, headers, user_agent=user_agent)
-    logger.info(f'method {method} called on token {token}')
+    logger.info(f"method {method} called on token {token}")
     return "Ok"
