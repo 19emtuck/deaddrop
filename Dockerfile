@@ -1,11 +1,7 @@
-#  base
-FROM python:3.13.3-slim-bookworm AS base
-RUN apt-get update && apt-get install -y --no-install-recommends libmimalloc2.0
-
 #  builder
-FROM base AS builder
+FROM python:3.13.3-slim-bookworm AS builder
 WORKDIR /code
-COPY ./requirements.txt /code/requirements.txt
+COPY ./requirements_313.txt /code/requirements.txt
 RUN python3.13 -m venv /code/venv_313
 ENV PATH="/code/venv_313/bin:$PATH"
 # Get Rust
@@ -30,9 +26,16 @@ RUN apt-get update && \
     apt-get -y clean
 
 #  runner from base
-FROM base
+FROM python:3.13.3-slim-bookworm AS base
 WORKDIR /code
 COPY --from=builder /code/venv_313 /code/venv_313
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libmimalloc2.0 && \
+    apt-get -y clean && \
+    rm -rf /var/cache/apt/archives && \
+    rm -rf /code/venv_313/lib/python3.13/site-packages/pip && \
+    find /code/venv_313/ -name "test*" -type d | xargs rm -rf && \
+    rm -rf /var/lib/apt/lists/*
 # activate virtual environment
 ENV VIRTUAL_ENV=/code/venv_313
 ENV PATH="/code/venv_313/bin:$PATH"

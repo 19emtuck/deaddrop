@@ -179,6 +179,9 @@ async def create_token():
 @app.put("/{token:str}")
 @app.get("/{token:str}")
 @app.post("/{token:str}")
+@app.options("/{token:str}")
+@app.head("/{token:str}")
+@app.trace("/{token:str}")
 async def dead_drop_on_token(
     token: str, request: Request, user_agent: Annotated[str | None, Header()] = None
 ):
