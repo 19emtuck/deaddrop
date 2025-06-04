@@ -7,6 +7,9 @@ services:
     depends_on:
      - redis
     container_name: deaddrop
+    environment:
+      - TZ=Europe/Paris
+      - DEBIAN_FRONTEND=noninteractive
   redis:
     image: "redis:alpine"
     container_name: deaddropcache
