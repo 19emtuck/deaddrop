@@ -1,5 +1,5 @@
 #  builder
-FROM python:3.13.3-slim-bookworm AS builder
+FROM python:3.13.4-slim-bookworm AS builder
 WORKDIR /code
 COPY ./requirements_313.txt /code/requirements.txt
 RUN python3.13 -m venv /code/venv_313
@@ -47,4 +47,4 @@ ENV REDIS_HOST_NAME=redis
 ENV REDIS_TCP_PORT=6379
 ENV REDIS_DEFAULT_DEB=0
 
-CMD ["gunicorn", "app.main:app", "-k", "uvicorn.workers.UvicornWorker", "--workers", "6", "--bind", "0.0.0.0:80"]
+CMD ["granian", "--interface", "asgi", "app.main:app", "--host", "0.0.0.0", "--port", "80", "--workers", "6", "--loop", "uvloop", "--ws" ]
