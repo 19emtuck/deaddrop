@@ -4,7 +4,7 @@ asgiref==3.4.1
 cachetools==4.2.4
 certifi==2021.10.8
 charset-normalizer==2.0.8
-fastapi[standard]==0.115.12
+fastapi[standard]==0.115.13
 orjson==3.10.18
 h11==0.12.0
 idna==3.3
