@@ -11,10 +11,10 @@ the terms of the M.I.T License.
 
 from typing import List, Annotated
 import asyncio
-import uuid
+import fastuuid as uuid
 import logging
 import os
-import json
+import orjson
 from datetime import datetime
 
 from fastapi import (
@@ -27,6 +27,7 @@ from fastapi import (
     WebSocketException,
     status,
 )
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import ORJSONResponse
 from fastapi.logger import logger
 from fastapi.middleware.cors import CORSMiddleware
@@ -44,6 +45,8 @@ redis_port = int(os.getenv("REDIS_TCP_PORT", "6379"))
 redis_db = int(os.getenv("REDIS_DEFAULT_DEB", "0"))
 
 app = FastAPI(redoc_url=None, docs_url=None, debug=False)
+app.add_middleware(GZipMiddleware, minimum_size=1000, compresslevel=9)
+
 client: StrictRedis = StrictRedis(host=redis_host, port=redis_port, db=redis_db)
 
 
@@ -81,10 +84,10 @@ async def websocket_endpoint(websocket: WebSocket, token_id: str):
         raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
 
     await websocket.accept()
-    data = json.loads(data)
+    data = orjson.loads(data)
     while not data:
         serialized_data = await client.get(token_id)
-        data = json.loads(serialized_data)
+        data = orjson.loads(serialized_data)
         if data:
             logger.info(f"websocket end of wait {token_id}")
             await websocket.send_text(f"{data}")
@@ -115,12 +118,12 @@ async def add_token(token: str) -> None:
     """
     create token on REDIS
     """
-    await client.set(token, json.dumps([]), 3600)
+    await client.set(token, b'[]', 3600)
 
 
 async def save_data(
     token: str, method: str, data: str, headers: List, user_agent: str | None = None
-):
+) -> None:
     """
     Save data on the corresponding token
     """
@@ -135,9 +138,9 @@ async def save_data(
 
     data = await client.get(token)
     if data:
-        data = json.loads(data)
+        data = orjson.loads(data)
         data.append(payload)
-        await client.set(token, json.dumps(data), 3600)
+        await client.set(token, orjson.dumps(data), 3600)
     else:
         raise UnknownToken(status_code=404, detail="unknown")
 
@@ -149,7 +152,7 @@ async def get_content(token):
     """
     data = await client.get(token)
     if data:
-        data = json.loads(data)
+        data = orjson.loads(data)
         result = {"data": data}
     else:
         raise UnknownToken(status_code=404, detail="unknown")
@@ -164,7 +167,7 @@ async def healthcheck():
     return Response("Ok")
 
 
-@app.post("/token")
+@app.post("/token", response_class=ORJSONResponse)
 async def create_token():
     """
     create a valid UUID
